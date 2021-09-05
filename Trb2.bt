@@ -1,0 +1,99 @@
+//------------------------------------------------
+//--- 010 Editor v10.0.2 Binary Template
+//
+//      File: Trb2.bt
+//    Author: AdventureT
+//   Version: 1.0
+//   Purpose: Analyses Prime Engine Binaries
+//  Category: Game
+// File Mask: *.trb
+//  ID Bytes: 54 52 42 //TRB
+//   History: None
+//------------------------------------------------
+if (ReadString(FTell(), 4) != "TRB\0" && ReadUInt() != 2001)
+{
+    BigEndian();
+    BitfieldLeftToRight();
+}
+FSeek(0);
+struct Header
+{
+    char magic[4];
+    uint version; //?
+    ushort flag1;
+    ushort flag2;
+    uint dataInfoCount;
+    uint dataInfoSize;
+    uint tagCount;
+    uint tagSize;
+    uint relocationDataOffset;
+    uint relocationDataSize;
+} header;
+
+FSeek(FTell() + 92); //padding
+
+struct DataInfo
+{
+	uint unknown1;
+	uint textOffset;
+	uint unknown3;
+	uint unknown4;
+	uint dataSize;
+	uint dataSize2;
+	uint dataOffset;
+	uint unknown5;
+	uint countOfRelocations;
+	uint zero2;
+	uint reversedTagsCount;
+	uint reversedTagsOffset;
+} dataInfos[header.dataInfoCount];
+
+struct TagInfo
+{
+    char magic[4];
+    uint dataOffset;
+    uint flag;
+    uint textOffset;
+} tagInfos[header.tagCount];
+
+struct ReversedTagInfo
+{
+    uint textOffset;
+    uint dataOffset;
+    int hash;
+    char magic[4];
+} reversedTagInfos[dataInfos[1].reversedTagsCount];
+
+local int i;
+
+FSeek(dataInfos[0].dataOffset);
+byte textData[dataInfos[0].dataSize];
+
+FSeek(dataInfos[1].dataOffset);
+byte rawData[dataInfos[1].dataSize];
+
+if (header.dataInfoCount > 2)
+{
+    FSeek(dataInfos[2].dataOffset);
+    byte extraData[dataInfos[2].dataSize];
+}
+
+FSeek(header.relocationDataOffset);
+//byte relocationData[header.relocationDataSize];
+
+struct Relocation
+{
+    ushort sectionIndex;
+    uint offset;
+} relocationData[header.relocationDataSize / 6];
+
+for ( i = 0; i < (header.relocationDataSize / 6); i++)
+{
+    FSeek(dataInfos[1].dataOffset + relocationData[i].offset);
+    if (relocationData[i].sectionIndex == 0) SetBackColor(cRed);
+    else if (relocationData[i].sectionIndex == 1) SetBackColor(cBlue);
+    else if (relocationData[i].sectionIndex == 2) SetBackColor(cYellow);
+    uint relocations;
+}
+
+

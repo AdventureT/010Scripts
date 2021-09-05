@@ -1,0 +1,19 @@
+//------------------------------------------------
+//--- 010 Editor v10.0.2 Binary Template
+//
+//      File: 
+//   Authors: 
+//   Version: 
+//   Purpose: 
+//  Category: 
+// File Mask: 
+//  ID Bytes: 
+//   History: 
+//------------------------------------------------
+struct Header{
+    char magic[4];
+    uint version;
+    int hash;
+    uint unknown;
+    uint sectionCount;
+} header;

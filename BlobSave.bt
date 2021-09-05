@@ -1,0 +1,37 @@
+//------------------------------------------------
+//--- 010 Editor v9.0.2 Binary Template
+//
+//      File: 
+//   Authors: 
+//   Version: 
+//   Purpose: 
+//  Category: 
+// File Mask: 
+//  ID Bytes: 
+//   History: 
+//------------------------------------------------
+char magic[4];
+long fileSize;
+long hash;
+int unknown;
+wstring magic2;
+short unknown2;
+int levelCompleted;
+int unknown3;
+int unknown4;
+byte unknownFlags[10];
+byte levelsBeaten[10]; //00 means not / 01 means beaten
+struct award
+{
+    byte painted;
+    byte awards;
+    byte lastAward;
+    byte unknown5;
+};
+award a[10];
+byte newLevelType[4];
+byte orangeCloudsOnNewLevelType[4];
+byte unknownLevelProperty[40];
+byte unknown6[32];
+byte unknown7[120];
+int points[10];

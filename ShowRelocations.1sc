@@ -1,0 +1,25 @@
+//------------------------------------------------
+//--- 010 Editor v10.0.2 Script File
+//
+//      File: 
+//   Authors: 
+//   Version: 
+//   Purpose: 
+//  Category: 
+//   History: 
+//------------------------------------------------
+char tsf[3];
+ReadBytes(tsf, FTell(), 3);
+byte endian;
+int tsfSize;
+char TRBF[4];
+char hdrx[4];
+int hdrxSize;
+short flag1;
+short flag2;
+int fileCount;
+int unknown;
+int unknown2;
+int tagSize;
+int zero;
+int flag;

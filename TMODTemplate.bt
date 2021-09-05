@@ -1,0 +1,285 @@
+//------------------------------------------------
+//--- 010 Editor v11.0 Binary Template
+//
+//      File: 
+//   Authors: 
+//   Version: 
+//   Purpose: 
+//  Category: 
+// File Mask: 
+//  ID Bytes: 
+//   History: 
+//------------------------------------------------
+#include <common-types.bt>
+
+local uint32 t, cnt, savePos = 0;
+local int64 savedFilePointers[100];
+
+savedFilePointers[0] = 0;
+
+void PushFP(void) { if (savePos < 100) { savedFilePointers[savePos] = FTell(); ++savePos; } }
+void PopFP(void) { if (savePos > 0) { --savePos; FSeek(savedFilePointers[savePos]); } }
+
+SetBackColor(cLtGreen);
+
+typedef struct
+{
+    SetBackColor(cLtYellow);
+    string string_value;
+} STRING <read=Read_STRING>;
+
+string Read_STRING(STRING& str)
+{
+    return str.string_value;
+}
+
+struct OFFSET(int64 start_offset)
+{
+    SetBackColor(cLtRed);
+    uint32 offset <format = hex>;
+    
+    {
+        PushFP();
+        FSeek(start_offset + offset);
+        SetBackColor(cLtBlue);
+        uint16 target <format = hex>;
+        PopFP();
+    }
+};
+
+struct OFFSET_INFO(int64 start_offset)
+{
+    uint32 offset_count; // ?
+    OFFSET offset_array_offset(start_offset);
+    
+    if (offset_count > 0 && offset_array_offset.offset != 0)
+    {
+        PushFP();
+        FSeek(start_offset + offset_array_offset.offset);
+        struct
+        {
+            OFFSET offset_array(start_offset)[offset_count] <optimize = false>;
+        } offset_array;
+        PopFP();
+    }
+};
+
+struct JOINT_INFO(int64 start_offset)
+{
+    float4 unknown_0;
+    float4x4 unknown_1;
+    float4x4 unknown_2;
+    uint32 name_offset <format = hex>;
+    uint16 parent_index;
+    uint16 padding;
+    float3 unknown_3;
+    uint32 unknown_4[3] <format = hex>;
+    
+    {
+        PushFP();
+        FSeek(start_offset + name_offset);
+        STRING name;
+        PopFP();
+    }
+};
+
+struct SKELETON(int64 start_offset)
+{
+    uint16 joint_count;
+    uint16 unknown_0           <format = hex>;
+    uint32 unknown_1[0x30 / 4] <format = hex>;
+    uint32 joint_info_offset   <format = hex>;
+    OFFSET unknown_offset(start_offset);
+    uint32 unknown_2           <format = hex>;
+    uint32 mesh_info_offset      <format = hex>;
+    
+    {
+        PushFP();
+        FSeek(start_offset + joint_info_offset);
+        struct
+        {
+            JOINT_INFO joint_info(start_offset)[joint_count] <optimize = false>;
+        } joint_info;
+        PopFP();
+    }
+    
+    {
+        PushFP();
+        FSeek(start_offset + mesh_info_offset);
+        //MESH_INFO mesh_info(start_offset);
+        PopFP();
+    }
+};
+
+typedef struct _DISPLAY_LIST(int64 start_offset)
+{
+    uint32 display_list_offset <format = hex>;
+    uint32 display_list_size   <format = hex>;
+    uint32 unknown_0 <format = hex>;
+    byte   matrix_indices[10] <format = hex>;
+} DISPLAY_LIST <size = 0x18>;
+
+struct LOD_MESH_DATA(int64 start_offset)
+{
+    uint32 vertex_count;
+    uint32 normal_count;
+    uint32 uv_count;
+    uint32 vertex_offset <format = hex>;
+    uint32 normal_offset <format = hex>;
+    uint32 uv_offset     <format = hex>;
+    OFFSET display_list_offset(start_offset);
+    uint32 display_list_size;
+    OFFSET mesh_name_offset(start_offset);
+    OFFSET unknown_offset_0(start_offset);
+    byte   unknown_1[4] <format = hex>;
+    
+    // pos
+    {
+        PushFP();
+        // need relocation information to properly resolve
+        PopFP();
+    }
+    
+    // nrm/clr0
+    {
+        PushFP();
+        // need relocation information to properly resolve
+        PopFP();
+    }
+    
+    // tex0
+    {
+        PushFP();
+        // need relocation information to properly resolve
+        PopFP();
+    }
+    
+    {
+        if (unknown_0 != 1)
+            Printf("Multiple diaplsy list definitions: 0x%08X, %d\n", FTell(), unknown_0);
+            
+        PushFP();
+        FSeek(start_offset + display_list_offset.offset);
+        DISPLAY_LIST display_list(start_offset);
+        PopFP();
+    }
+    
+    {
+        PushFP();
+        FSeek(start_offset + mesh_name_offset.offset);
+        STRING mesh_name;
+        PopFP();
+    }
+};
+
+struct LOD_MESH_HEADER
+{
+    //
+    uint32 unknown_0;
+    uint32 unknown_1[3];
+    //
+    float4 unknown_2;
+};
+
+struct LOD_MESH_INFO(int64 start_offset)
+{
+    OFFSET header_offset(start_offset);
+    OFFSET mesh_info_offset(start_offset);
+    uint32 mesh_count;
+    
+    {
+        PushFP();
+        FSeek(start_offset + header_offset.offset);
+        LOD_MESH_HEADER unknown_info;
+        PopFP();
+    }
+    
+    {
+        PushFP();
+        FSeek(start_offset + mesh_info_offset.offset);
+        struct
+        {
+            struct
+            {
+                OFFSET mesh_data_offset(start_offset);
+                
+                {
+                    PushFP();
+                    FSeek(start_offset + mesh_data_offset.offset);
+                    LOD_MESH_DATA lod_mesh_data(start_offset);
+                    PopFP();
+                }
+            } mesh_offset_info[mesh_count] <optimize = false>;
+        } mesh_offset_info;
+        PopFP();
+    }
+};
+
+struct TMOD_HEADER
+{
+    local int64 start_offset = FTell();
+    FSkip(0x15C); // hardcoded until integrated with TRB template
+
+    OFFSET name_offset(start_offset);
+    uint32 unknown_0              <format = hex>;
+    float  unknown_1              <format = hex>;
+    OFFSET skeleton_header_offset(start_offset);
+    OFFSET skeleton_offset(start_offset);
+    OFFSET collision_offset(start_offset);
+    OFFSET lod_info_offset(start_offset);
+    
+    {
+        PushFP();
+        FSeek(start_offset + name_offset.offset);
+        STRING name;
+        PopFP();
+    }
+    
+    {
+        PushFP();
+        FSeek(start_offset + collision_offset.offset);
+        uint32 collision_data;
+        PopFP();
+    }
+    
+    {
+        PushFP();
+        FSeek(start_offset + skeleton_header_offset.offset);
+        uint32 skeleton_header;
+        PopFP();
+    }
+    
+    {
+        PushFP();
+        FSeek(start_offset + skeleton_offset.offset);
+        SKELETON skeleton_data(start_offset);
+        PopFP();
+    }
+    
+    {
+        PushFP();
+        FSeek(start_offset + lod_info_offset.offset);
+        struct
+        {
+            struct
+            {
+                OFFSET lod_info_offset(start_offset);
+                
+                {
+                    PushFP();
+                    FSeek(start_offset + lod_info_offset.offset);
+                    LOD_MESH_INFO lod_mesh_info(start_offset);
+                    PopFP();
+                }
+            } lod_offset_info[unknown_0] <optimize = false>;
+        } lod_offset_info;
+        PopFP();
+    }
+};
+
+if (ReadUByte(0x03) == 'L')
+    LittleEndian();
+else
+    BigEndian();
+
+TMOD_HEADER twld_header;

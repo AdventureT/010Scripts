@@ -1,0 +1,268 @@
+//------------------------------------------------
+//--- 010 Editor v11.0 Binary Template
+//
+//      File: 
+//   Authors: 
+//   Version: 
+//   Purpose: TWorld related data structures
+//  Category: 
+// File Mask: 
+//  ID Bytes: 
+//   History: 
+//------------------------------------------------
+#include <common-types.bt>
+
+local uint32 t, cnt, savePos = 0;
+local int64 savedFilePointers[100];
+
+savedFilePointers[0] = 0;
+
+void PushFP(void) { if (savePos < 100) { savedFilePointers[savePos] = FTell(); ++savePos; } }
+void PopFP(void) { if (savePos > 0) { --savePos; FSeek(savedFilePointers[savePos]); } }
+
+SetBackColor(cLtGreen);
+
+typedef struct
+{
+    SetBackColor(cLtYellow);
+    string string_value;
+} STRING <read=Read_STRING>;
+
+string Read_STRING(STRING& str)
+{
+    return str.string_value;
+}
+
+struct OFFSET(int64 start_offset)
+{
+    SetBackColor(cLtRed);
+    uint32 offset <format = hex>;
+    
+    {
+        PushFP();
+        FSeek(start_offset + offset);
+        SetBackColor(cLtBlue);
+        uint16 target <format = hex>;
+        PopFP();
+    }
+};
+
+struct OFFSET_INFO(int64 start_offset)
+{
+    uint32 offset_count; // ?
+    OFFSET offset_array_offset(start_offset);
+    
+    if (offset_count > 0 && offset_array_offset.offset != 0)
+    {
+        PushFP();
+        FSeek(start_offset + offset_array_offset.offset);
+        struct
+        {
+            OFFSET offset_array(start_offset)[offset_count] <optimize = false>;
+        } offset_array;
+        PopFP();
+    }
+};
+
+struct SUB_MESH_DATA(int64 start_offset)
+{
+    uint32 unknown_0 <format = hex>; // mesh class instance address?
+    float4 unknown_1;
+    uint32 vertex_count;
+    OFFSET pos_offset(start_offset);
+    OFFSET nrm_offset(start_offset);
+    OFFSET tex0_offset(start_offset);
+    OFFSET clr_offset(start_offset);
+    OFFSET tex1_offset(start_offset);
+    OFFSET display_list_offset(start_offset);
+    uint32 display_list_size <format = hex>;
+    OFFSET name_offset(start_offset);
+    uint32 unknown_3      <format = hex>;
+    uint32 vertex_attr[2] <format = hex>;
+    
+    {
+        PushFP();
+        FSeek(start_offset + name_offset.offset);
+        STRING sub_mesh_name;
+        PopFP();
+    }
+};
+
+struct SUB_MESH_INFO(int64 start_offset)
+{
+    float4 unknown_0;
+    OFFSET sub_mesh_info_offset(start_offset);
+    
+    {
+        PushFP();
+        FSeek(start_offset + sub_mesh_info_offset.offset);
+        SUB_MESH_DATA sub_mesh_data(start_offset);
+        PopFP();
+    }
+};
+
+struct MESH_INFO(int64 start_offset)
+{
+    uint16 mesh_count;
+    uint16 unknown_0 <format = hex>;
+    uint32 unknown_1[0x80 /4] <format = hex>;
+    OFFSET_INFO offset_info(start_offset);
+    OFFSET unknown_offset(start_offset);
+    
+    if (offset_info.offset_count > 0)
+    {
+        PushFP();
+        
+        local uint32 offset_count = offset_info.offset_count;
+        local uint32 offset_index = 0;
+        local uint32 mesh_index = 0;
+        for (offset_index = 0; offset_index < offset_count; ++offset_index)
+        {
+            if (exists(offset_info.offset_array.offset_array[offset_index]))
+                FSeek(start_offset + offset_info.offset_array.offset_array[offset_index].offset);
+            else
+                FSeek(start_offset + offset_info.offset_array.offset_array.offset);
+                
+            SUB_MESH_INFO sub_mesh_info(start_offset);
+        }
+        
+        PopFP();
+    }
+};
+
+struct MESH_OFFSET_INFO(int64 start_offset)
+{
+    OFFSET_INFO offset_info(start_offset);
+    
+    if (offset_info.offset_count > 0)
+    {
+        PushFP();
+        
+        local uint32 offset_count = offset_info.offset_count;
+        local uint32 offset_index = 0;
+        local uint32 mesh_index = 0;
+        for (offset_index = 0; offset_index < offset_count; ++offset_index)
+        {
+            if (exists(offset_info.offset_array.offset_array[offset_index]))
+                FSeek(start_offset + offset_info.offset_array.offset_array[offset_index].offset);
+            else
+                FSeek(start_offset + offset_info.offset_array.offset_array.offset);
+                
+            OFFSET_INFO mesh_offset_info(start_offset);
+            
+            for (mesh_index = 0; mesh_index < mesh_offset_info.offset_count; ++mesh_index)
+            {
+                if (exists(mesh_offset_info.offset_array.offset_array[mesh_index]))
+                    FSeek(start_offset + mesh_offset_info.offset_array.offset_array[mesh_index].offset);
+                else
+                    FSeek(start_offset + mesh_offset_info.offset_array.offset_array.offset);
+                    
+                MESH_INFO mesh_info(start_offset);
+            }
+        }
+        
+        PopFP();
+    }
+};
+
+struct JOINT_INFO(int64 start_offset)
+{
+    float4 unknown_0;
+    float4x4 unknown_1;
+    float4x4 unknown_2;
+    uint32 name_offset <format = hex>;
+    uint16 parent_index;
+    uint16 padding;
+    float3 unknown_3;
+    uint32 unknown_4[3] <format = hex>;
+    
+    {
+        PushFP();
+        FSeek(start_offset + name_offset);
+        STRING name;
+        PopFP();
+    }
+};
+
+struct SKELETON(int64 start_offset)
+{
+    uint16 joint_count;
+    uint16 unknown_0           <format = hex>;
+    uint32 unknown_1[0x30 / 4] <format = hex>;
+    uint32 joint_info_offset   <format = hex>;
+    uint32 unknown_offset      <format = hex>;
+    uint32 unknown_2           <format = hex>;
+    uint32 mesh_info_offset      <format = hex>;
+    
+    {
+        PushFP();
+        FSeek(start_offset + joint_info_offset);
+        struct
+        {
+            JOINT_INFO joint_info(start_offset)[joint_count] <optimize = false>;
+        } joint_info;
+        PopFP();
+    }
+    
+    {
+        PushFP();
+        FSeek(start_offset + mesh_info_offset);
+        MESH_INFO mesh_info(start_offset);
+        PopFP();
+    }
+};
+
+struct TWLD_HEADER
+{
+    local int64 start_offset = FTell();
+
+    uint32 name_offset            <format = hex>;
+    uint32 mesh_info_offset       <format = hex>;
+    uint32 collision_offset       <format = hex>;
+    uint32 skeleton_header_offset <format = hex>;
+    uint32 skeleton_offset        <format = hex>;
+    
+    float  bounding_box[5];
+    
+    {
+        PushFP();
+        FSeek(start_offset + name_offset);
+        STRING world_name;
+        PopFP();
+    }
+    
+    {
+        PushFP();
+        FSeek(start_offset + mesh_info_offset);
+        MESH_OFFSET_INFO mesh_offset_info(start_offset);
+        PopFP();
+    }
+    
+    {
+        PushFP();
+        FSeek(start_offset + collision_offset);
+        uint32 collision_data;
+        PopFP();
+    }
+    
+    {
+        PushFP();
+        FSeek(start_offset + skeleton_header_offset);
+        uint32 skeleton_header;
+        PopFP();
+    }
+    
+    {
+        PushFP();
+        FSeek(start_offset + skeleton_offset);
+        SKELETON skeleton_data(start_offset);
+        PopFP();
+    }
+};
+
+if (ReadUByte(0x03) == 'L')
+    LittleEndian();
+else
+    BigEndian();
+
+TWLD_HEADER twld_header;

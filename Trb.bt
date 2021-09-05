@@ -1,0 +1,123 @@
+//------------------------------------------------
+//--- 010 Editor v10.0.2 Binary Template
+//
+//      File: Trb.bt
+//    Author: AdventureT
+//   Version: 1.0
+//   Purpose: Bookmarks Relocations
+//  Category: Game
+// File Mask: *.trb
+//  ID Bytes: 54 53 46 //TSF
+//   History: None
+//------------------------------------------------
+
+struct TSF
+{
+    char magic[3];
+    byte endian;
+    if (endian == 'B') // Endian Check
+    {
+        BigEndian();  
+    }
+    else
+    {
+        LittleEndian();
+    }
+    int size;
+} tsf;
+
+struct TRBF
+{
+    char magic[4];
+} trbf;
+
+struct HDRX
+{
+    char magic[4];
+    int size;
+    short flag1;
+    short flag2;
+    int fileCount;
+    struct File
+    {
+        int unknown;
+        int tagSize;
+        int zero;
+        int flag;
+    } file[fileCount];
+} hdrx;
+
+local int baseOffset = FTell() + 8;
+
+struct SECT
+{
+    char magic[4];
+    int size;
+    byte data[size];
+} sect;
+
+if (ReadString(FTell(),4) == "RELC") // There are trb files without RELCs
+{
+    struct RELC
+    {
+        char magic[4];
+        int size;
+        int count;
+
+        struct RelocationEntry
+        {
+            short hdrxIndex1;
+            short hdrxIndex2;
+            int offset;
+        } relocationEntries[count];
+    } relc;
+}
+
+struct SYMB
+{
+    char magic[4];
+    int size;
+    int count;
+    local int textOffset = FTell() + (count * 12);
+    struct Name
+    {
+        string name;
+    };
+    struct SymbolEntry
+    {
+        short ID;
+        int nameOffset;
+        short nameID;
+        int dataOffset;
+    } symbolEntries[count];
+    local int i;
+    for ( i = 0; i < count; i++)
+    {
+        FSeek(textOffset + symbolEntries[i].nameOffset);
+        Name name;
+    }
+    //byte names[size - (count * 12)-4];
+} symb;
+
+if (exists(relc))
+{
+    // Calculate Section Offsets
+    local int sectionOffsets[hdrx.fileCount+1];
+    local int i;
+    sectionOffsets[0] = baseOffset;
+    for ( i = 1; i < hdrx.fileCount+1; i++)
+    {
+        sectionOffsets[i] = hdrx.file[i-1].tagSize + sectionOffsets[i-1];
+    }
+
+    // Colour Relocations
+    for ( i = 0; i < relc.count; i++)
+    {
+        FSeek(sectionOffsets[relc.relocationEntries[i].hdrxIndex1] + relc.relocationEntries[i].offset);
+        SetBackColor(cRed);
+        int relocations;
+        FSeek(sectionOffsets[relc.relocationEntries[i].hdrxIndex1] + relocations);
+        SetBackColor(cBlue);
+        int data;
+    }
+}

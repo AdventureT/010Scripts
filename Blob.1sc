@@ -1,0 +1,32 @@
+//------------------------------------------------
+//--- 010 Editor v9.0.2 Script File
+//
+//      File: 
+//   Authors: 
+//   Version: 
+//   Purpose: 
+//  Category: 
+//   History: 
+//------------------------------------------------
+RunTemplate("Trb.bt");
+if (exists(relc))
+{
+    // Calculate Section Offsets
+    int sectionOffsets[hdrx.fileCount+1];
+    int i;
+    sectionOffsets[0] = baseOffset;
+    for ( i = 1; i < hdrx.fileCount+1; i++)
+    {
+        sectionOffsets[i] = hdrx.file[i-1].tagSize + sectionOffsets[i-1];
+    }
+    Relocation relocations[relc.count];
+    for ( i = 0; i < relc.count; i++)
+    {
+        FSeek(sectionOffsets[relc.relocationEntries[i].hdrxIndex1] + relc.relocationEntries[i].offset);
+        SetBackColor(cRed);
+        relocations[i].offset = ReadInt(FTell());
+        FSeek(sectionOffsets[relc.relocationEntries[i].hdrxIndex1] + relocations);
+        SetBackColor(cBlue);
+        relocations[i].data = ReadInt(FTell());
+    }
+}

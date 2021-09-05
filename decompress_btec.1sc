@@ -1,0 +1,121 @@
+//------------------------------------------------
+//--- 010 Editor v11.0 Script File
+//
+//      File: 
+//   Authors: 
+//   Version: 
+//   Purpose: 
+//  Category: 
+//   History: 
+//------------------------------------------------
+
+if (ReadUByte(0x04) == 0)
+BigEndian();
+else
+LittleEndian();
+
+local int src_file = GetFileNum();
+local int dst_file = FileNew();
+
+FileSelect(src_file);
+FSeek(0x1800); // seek to start of BTEC header
+
+local int64 file_pos = FTell();
+local uint magic     = ReadUInt(file_pos + 0x00);
+local uint version   = ReadUInt(file_pos + 0x04);
+local uint data_size = ReadUInt(file_pos + 0x08);
+local uint zsize     = ReadUInt(file_pos + 0x0C);
+
+file_pos += 0x10;
+
+local int read_dst, size, offset;
+local int read_count;
+local uint remaining = data_size;
+local int file_source;
+local byte data[65536];
+local int i, dst_pos;
+
+while (remaining > 0)
+{
+    Printf("Remaining: %d\n", remaining);
+
+    FileSelect(src_file);
+    read_count = get_size_info(file_pos, read_dst, size, offset);
+    remaining -= read_count;
+    file_pos  += read_count;
+
+    if (read_dst)
+    {
+        FileSelect(dst_file);
+        if (size > 0)
+        {
+            if (size < offset)
+            {
+                ReadBytes(data, FileSize() - offset, size);
+                WriteBytes(data, FileSize(), size);
+            }
+            else
+            {
+                dst_pos = FileSize() - offset;
+                for (i = 0; i < size; ++i)
+                {
+                    data[i] = ReadUByte(dst_pos + i);
+                    WriteByte(FileSize(), data[i]);
+                }
+            }
+        }
+    }
+    else
+    {
+        FileSelect(src_file);
+        ReadBytes(data, file_pos, size);
+
+        FileSelect(dst_file);
+        WriteBytes(data, FileSize(), size);
+
+        remaining -= size;
+        file_pos  += size;
+    }
+
+    FileSelect(src_file);
+}
+
+// FUN_0081567c
+int get_size_info(int64 file_pos, int& read_dst, int& size, int& offset)
+{
+    local int read_count = 0; // iVar1
+    
+    size = ReadUByte(file_pos + read_count++); // local_8
+    read_dst = (size & 0x80) == 0; // param_2
+    
+    if ((size & 0x40) == 0)
+    {
+        size = size & 0x3F;
+    }
+    else
+    {
+        size = ((size & 0x3F) << 0x08) + ReadUByte(file_pos + read_count++);
+    }
+    
+    size = size + 1; // param_3
+    offset = 0; // param_4
+    
+    if (read_dst)
+    {
+        offset = ReadUByte(file_pos + read_count++);
+        
+        if ((offset & 0x80) == 0)
+        {
+            offset = offset & 0x7F;
+        }
+        else
+        {
+            offset = ((offset & 0x7F) << 0x08) + ReadUByte(file_pos + read_count++);
+        }
+        offset = offset + 1;
+    }
+    
+    Printf("Size: 0x%08X, Offset: 0x%08X, Bytes read: %d\n", size, offset, read_count);
+
+    return read_count;
+}

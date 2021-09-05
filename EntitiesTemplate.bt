@@ -1,0 +1,186 @@
+//------------------------------------------------
+//--- 010 Editor v11.0 Binary Template
+//
+//      File: 
+//   Authors: 
+//   Version: 
+//   Purpose: 
+//  Category: 
+// File Mask: 
+//  ID Bytes: 
+//   History: 
+//------------------------------------------------
+#include <common-types.bt>
+
+local uint32 t, cnt, savePos = 0;
+local int64 savedFilePointers[100];
+
+savedFilePointers[0] = 0;
+
+void PushFP(void) { if (savePos < 100) { savedFilePointers[savePos] = FTell(); ++savePos; } }
+void PopFP(void) { if (savePos > 0) { --savePos; FSeek(savedFilePointers[savePos]); } }
+
+SetBackColor(cLtGreen);
+
+typedef struct
+{
+    SetBackColor(cLtYellow);
+    string string_value;
+} STRING <read=Read_STRING>;
+
+string Read_STRING(STRING& str)
+{
+    return str.string_value;
+}
+
+struct OFFSET(int64 start_offset)
+{
+    SetBackColor(cLtRed);
+    uint32 offset <format = hex>;
+    
+    if (offset != 0)
+    {
+        PushFP();
+        FSeek(start_offset + offset);
+        SetBackColor(cLtBlue);
+        uint16 target <format = hex>;
+        PopFP();
+    }
+};
+
+struct OFFSET_INFO(int64 start_offset)
+{
+    uint32 offset_count; // ?
+    OFFSET offset_array_offset(start_offset);
+    
+    if (offset_count > 0 && offset_array_offset.offset != 0)
+    {
+        PushFP();
+        FSeek(start_offset + offset_array_offset.offset);
+        struct
+        {
+            OFFSET offset_array(start_offset)[offset_count] <optimize = false>;
+        } offset_array;
+        PopFP();
+    }
+};
+
+// 0 - integer?
+// 1 - float?
+// 2 - boolean?
+// 3 - string?
+// 4 - 
+// 5 - 
+// 6 - 
+// 8 - 
+// 9 - 
+// 10 - 
+// 11 - 
+
+typedef struct _ENTITIES_PROPERTY(int64 start_offset)
+{
+    //
+    OFFSET name_offset(start_offset);
+    uint32 data_type;
+    if (data_type >= 3)
+    {
+        OFFSET data_value(start_offset);
+    }
+    else
+    {
+        uint32 data_value;
+    }
+    
+    {
+        PushFP();
+        FSeek(start_offset + name_offset.offset);
+        STRING property_name;
+        PopFP();
+    }
+    
+    switch (data_type)
+    {
+    case 3:
+        {
+            PushFP();
+            FSeek(start_offset + data_value.offset);
+            STRING property_value;
+            PopFP();
+        }
+    }
+    
+    if (data_type >= 3) Printf("Property type: %s (%d), value: %X, Parent offset: %LX\n", property_name.string_value, data_type, data_value.offset, startof(parentof(parentof(this))));
+} ENTITIES_PROPERTY <read = Read_ENTITIES_PROPERTY>;
+
+string Read_ENTITIES_PROPERTY(ENTITIES_PROPERTY& str)
+{
+    return str.property_name.string_value;
+}
+
+typedef struct _ENTITIES_INFO(int64 start_offset) //
+{
+    //
+    OFFSET type_offset(start_offset);
+    uint32 property_count;
+    OFFSET properties_offset(start_offset);
+    OFFSET transform_offset(start_offset);
+    //
+    OFFSET unknown_offset_3(start_offset);
+    uint32 unknown_1;
+    uint32 unknown_2[3];
+    OFFSET unknown_offset_4(start_offset);
+    
+    {
+        PushFP();
+        FSeek(start_offset + type_offset.offset);
+        STRING entity_type;
+        PopFP();
+    }
+    
+    {
+        PushFP();
+        FSeek(start_offset + transform_offset.offset);
+        float4x4 transform;
+        PopFP();
+    }
+    
+    {
+        PushFP();
+        FSeek(start_offset + properties_offset.offset);
+        struct
+        {
+            ENTITIES_PROPERTY entities_properties(start_offset)[property_count] <optimize = false>;
+        } entities_properties;
+        PopFP();
+    }
+} ENTITIES_INFO <read = Read_ENTITIES_INFO>;
+
+string Read_ENTITIES_INFO(ENTITIES_INFO& str)
+{
+    return str.entity_type.string_value;
+}
+
+struct ENTITIES_HEADER
+{
+    local int64 start_offset = FTell();
+
+    OFFSET offset_0(start_offset) <format = hex>;
+    uint32 count                  <format = hex>;
+    
+    {
+        PushFP();
+        FSeek(start_offset + offset_0.offset);
+        struct
+        {
+            ENTITIES_INFO entities_info(start_offset)[count] <optimize = false>;
+        } entities_info;
+        PopFP();
+    }
+};
+
+if (ReadUByte(0x03) == 'L')
+    LittleEndian();
+else
+    BigEndian();
+
+ENTITIES_HEADER entities_header;

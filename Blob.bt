@@ -1,0 +1,15 @@
+//------------------------------------------------
+//--- 010 Editor v9.0.2 Binary Template
+//
+//      File: Blob trb
+//   Authors: AdventureT
+//   Version: 1.0
+//   Purpose: 
+//  Category: 
+// File Mask: 
+//  ID Bytes: 
+//   History: 
+//------------------------------------------------
+char magic[4];
+long fileLength;
+char magic2[4];

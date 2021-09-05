@@ -1,0 +1,414 @@
+//------------------------------------------------
+//--- 010 Editor v11.0 Binary Template
+//
+//      File: 
+//   Authors: 
+//   Version: 
+//   Purpose: 
+//  Category: 
+// File Mask: 
+//  ID Bytes: 
+//   History: 
+//------------------------------------------------
+#include <common-types.bt>
+
+SetReadOnly(true);
+
+local uint32 t, cnt, savePos = 0;
+local int64 savedFilePointers[100];
+
+savedFilePointers[0] = 0;
+
+void PushFP(void) { if (savePos < 100) { savedFilePointers[savePos] = FTell(); ++savePos; } }
+void PopFP(void) { if (savePos > 0) { --savePos; FSeek(savedFilePointers[savePos]); } }
+
+typedef struct
+{
+    SetBackColor(cLtYellow);
+    string string_value;
+} STRING <read=Read_STRING>;
+
+string Read_STRING(STRING& str)
+{
+    return str.string_value;
+}
+
+struct OFFSET(int64 start_offset)
+{
+    SetBackColor(cLtRed);
+    uint32 offset <format = hex>;
+    
+    if (start_offset >= 0)
+    {
+        PushFP();
+        FSeek(start_offset + offset);
+        SetBackColor(cLtBlue);
+        uint16 target <format = hex>;
+        PopFP();
+    }
+};
+
+struct BLOCK_HEADER
+{
+    char   magic[4] <format = hex>;
+    uint32 size     <format = hex>;
+};
+
+struct BLOCK_DATA(BLOCK_HEADER& block_header)
+{
+    byte   block_data[block_header.size] <format = hex>;
+};
+
+struct BFST_BLOCK(BLOCK_HEADER& block_header)
+{
+    struct TRBF_BLOCK block_data(block_header);
+};
+
+struct TRBF_BLOCK(BLOCK_HEADER& block_header)
+{
+    char   magic[4];
+
+    struct BLOCK hdrx_block;
+    struct BLOCK sect_block;
+    struct BLOCK relc_block;
+    struct BLOCK symb_block;
+    
+    if (relc_block.block_data.relc_data.relocation_count > 0)
+    {
+        local uint32 relocation_count = relc_block.block_data.relc_data.relocation_count;
+        local uint32 relocation_index = 0;
+        local uint32 header_index = 0;
+        local uint32 header_offset = 0;
+        local uint32 target_header_index = 0;
+        local uint32 target_header_offset = 0;
+        local uint32 relocation_offset = 0;
+        local uint32 target_offset = 0;
+        local int64 sector_base = startof(sect_block.block_data.sect_data);
+
+        struct
+        {
+            // mark source offsets
+            for (relocation_index = 0; relocation_index < relocation_count; ++relocation_index)
+            {
+                header_index = relc_block.block_data.relc_data.relocation_info[relocation_index].header_index_0;
+                header_offset = hdrx_block.block_data.hdrx_data.section_offsets[header_index];
+                target_header_index = relc_block.block_data.relc_data.relocation_info[relocation_index].header_index_1;
+                target_header_offset = hdrx_block.block_data.hdrx_data.section_offsets[target_header_index];
+                
+                relocation_offset = relc_block.block_data.relc_data.relocation_info[relocation_index].relocation_offset;
+                
+                {
+                    PushFP();
+                    FSeek(sector_base + header_offset + relocation_offset);
+                    OFFSET relocation_source(sector_base + target_header_offset) <bgcolor=cLtRed>;
+                    PopFP();
+                }
+            }
+        } relocation_sources;
+        
+        struct
+        {
+            // mark target offsets
+            for (relocation_index = 0; relocation_index < relocation_count; ++relocation_index)
+            {
+                header_index = relc_block.block_data.relc_data.relocation_info[relocation_index].header_index_0;
+                header_offset = hdrx_block.block_data.hdrx_data.section_offsets[header_index];
+                target_header_index = relc_block.block_data.relc_data.relocation_info[relocation_index].header_index_1;
+                target_header_offset = hdrx_block.block_data.hdrx_data.section_offsets[target_header_index];
+                
+                relocation_offset = relc_block.block_data.relc_data.relocation_info[relocation_index].relocation_offset;
+                
+                target_offset = ReadUInt(sector_base + header_offset + relocation_offset);
+                
+                {
+                    PushFP();
+                    FSeek(sector_base + target_header_offset + target_offset);
+                    uint16 relocation_target <bgcolor=cLtBlue>;
+                    PopFP();
+                }
+            }
+        } relocation_targets;
+        
+        struct
+        {
+            local struct RELC_MAPPING
+            {
+                uint32 source_offset <format = hex>;
+                uint32 target_offset <format = hex>;
+                uint32 final_offset  <format = hex>;
+            };
+            
+            local RELC_MAPPING relocation_map[relocation_count];
+            
+            // map absolute source to target offsets
+            for (relocation_index = 0; relocation_index < relocation_count; ++relocation_index)
+            {
+                relocation_map[relocation_index].source_offset = startof(relocation_sources.relocation_source[relocation_index]);
+                relocation_map[relocation_index].target_offset = ReadUInt(relocation_map[relocation_index].source_offset);
+                relocation_map[relocation_index].final_offset = startof(relocation_targets.relocation_target[relocation_index]);
+            }
+        } relocation_map;
+        
+        struct RELC_OFFSET()
+        {
+            SetBackColor(cLtRed);
+            uint32 offset <format = hex>;
+            
+            local int64 relc_offset = -1;
+            for (relocation_index = 0; relocation_index < relocation_count; ++relocation_index)
+            {
+                if (relocation_map.relocation_map[relocation_index].source_offset == startof(offset))
+                    relc_offset = relocation_map.relocation_map[relocation_index].final_offset;
+                if (relocation_map.relocation_map[relocation_index].source_offset >= startof(offset))
+                    break;
+            }
+    
+            if (relc_offset >= 0)
+            {
+                PushFP();
+                FSeek(relc_offset);
+                SetBackColor(cLtBlue);
+                uint16 target <format = hex>;
+                PopFP();
+            }
+        };
+        
+        if (symb_block.block_data.symb_data.symbol_count > 0)
+        {
+            local uint32 symbol_count = symb_block.block_data.symb_data.symbol_count;
+            local uint32 symbol_index = 0;
+            local uint32 data_offset;
+            local string symbol_name;
+            local int64  section_offset = startof(sect_block.block_data.sect_data);
+            
+            for (symbol_index = 0; symbol_index < symbol_count; ++symbol_index)
+            {
+                symbol_name = symb_block.block_data.symb_data.symbol_info.symbol_info[symbol_index].name.string_value;
+                data_offset = symb_block.block_data.symb_data.symbol_info.symbol_info[symbol_index].data_offset;
+                header_index = symb_block.block_data.symb_data.symbol_info.symbol_info[symbol_index].header_index;
+                header_offset = hdrx_block.block_data.hdrx_data.section_offsets[header_index];
+                
+                FSeek(section_offset + header_offset + data_offset);
+                
+                if (Strncmp("UV", symbol_name, 2) == 0)
+                {
+                    struct
+                    {
+                        uint32 display_list_count;
+                        struct RELC_OFFSET display_list_offset;
+                        float3 unknown_0;
+                        float3 unknown_1;
+                    } symbol_data;
+                    continue;
+                }
+
+                switch (symbol_name)
+                {
+                case "ttex":
+                {
+                    struct TTEX_HEADER
+                    {
+                        uint32 unknown_0              <format = hex>;
+                        struct RELC_OFFSET name_offset;
+                        
+                        uint32 unknown_1[0x84 / 4];
+                        
+                        {
+                            PushFP();
+                            FSeek(startof(name_offset.target));
+                            STRING name;
+                            PopFP();
+                        }
+                    } symbol_data;
+                } break;
+                case "tmat":
+                {
+                    struct TMAT_HEADER
+                    {
+                        uint32 unknown_0              <format = hex>;
+                        uint32 unknown_1              <format = hex>;
+                        struct RELC_OFFSET name_offset;
+                        
+                        uint32 unknown_2[0x28 / 4];
+                        
+                        {
+                            PushFP();
+                            FSeek(startof(name_offset.target));
+                            STRING name;
+                            PopFP();
+                        }
+                    } symbol_data;
+                } break;
+                case "tmod":
+                {
+                    struct TMOD_HEADER
+                    {
+                        struct RELC_OFFSET name_offset;
+                        uint32 unknown_0              <format = hex>;
+                        float  unknown_1              <format = hex>;
+                        struct RELC_OFFSET skeleton_header_offset;
+                        struct RELC_OFFSET skeleton_offset;
+                        struct RELC_OFFSET collision_offset;
+                        struct RELC_OFFSET lod_info_offset;
+                        
+                        {
+                            PushFP();
+                            FSeek(startof(name_offset.target));
+                            STRING name;
+                            PopFP();
+                        }
+                    } symbol_data;
+                } break;
+                case "twld":
+                {
+                    struct TWLD_HEADER
+                    {
+                        struct RELC_OFFSET name_offset            <format = hex>;
+                        struct RELC_OFFSET mesh_info_offset       <format = hex>;
+                        struct RELC_OFFSET collision_offset       <format = hex>;
+                        struct RELC_OFFSET skeleton_header_offset <format = hex>;
+                        struct RELC_OFFSET skeleton_offset        <format = hex>;
+                        
+                        float  bounding_box[5];
+                        
+                        {
+                            PushFP();
+                            FSeek(startof(name_offset.target));
+                            STRING name;
+                            PopFP();
+                        }
+                    } symbol_data;
+                } break;
+                case "LightingData":
+                    uint32 symbol_data <format = hex>; break;
+                case "Terrain_Main":
+                {
+                    struct TERRAIN_HEADER
+                    {
+                        struct RELC_OFFSET cell_info_offset  <format = hex>;
+                        uint32             cell_info_count   <format = hex>;
+                        struct RELC_OFFSET placement_offset  <format = hex>;
+                        uint32             placement_count   <format = hex>;
+                    } symbol_data;
+                } break;
+                default:
+                    uint32 symbol_data <format = hex>; break;
+                }
+            }
+        }
+    }
+};
+
+struct SECTION_INFO
+{
+    uint16 unknown0  <format = hex>;
+    uint16 unknown1  <format = hex>;
+    uint32 section_size  <format = hex>;
+    uint32 unknown2  <format = hex>;
+    uint32 section_flags <format = hex>; // ?
+};
+
+struct HDRX_BLOCK(BLOCK_HEADER& block_header)
+{
+    uint16 flags0;
+    uint16 flags1;
+    uint32 section_count;
+    SECTION_INFO section_info[section_count];
+    
+    local uint32 section_offsets[section_count] = {0};
+    local uint32 section_index = 1;
+    for (section_index = 1; section_index < section_count; ++section_index)
+    {
+        section_offsets[section_index] = section_offsets[section_index - 1] + section_info[section_index - 1].section_size;
+    }
+};
+
+struct SECT_BLOCK(BLOCK_HEADER& block_header)
+{
+    uint32 unknown_0x00 <format = hex>;
+};
+
+struct RELC_INFO
+{
+    uint16 header_index_0; // source
+    uint16 header_index_1; // target
+    uint32 relocation_offset <format = hex>;
+};
+
+struct RELC_BLOCK(BLOCK_HEADER& block_header)
+{
+    uint32 relocation_count;
+    RELC_INFO relocation_info[relocation_count];
+};
+
+typedef struct _SYMB_INFO(int64 table_offset)
+{
+    uint16 header_index     <format = hex>;
+    uint16 type_offset <format = hex>;
+    uint16 padding     <format = hex>;
+    uint16 type_id     <format = hex>; // ?
+    uint32 data_offset <format = hex>;
+    
+    {
+        PushFP();
+        FSeek(table_offset + type_offset);
+        STRING name;
+        PopFP();
+    }
+} SYMB_INFO <read=Read_SYMB_name>;
+
+string Read_SYMB_name(SYMB_INFO& symbol_info)
+{
+    return symbol_info.name.string_value;
+}
+
+struct SYMB_BLOCK(BLOCK_HEADER& block_header)
+{
+    uint32 symbol_count;
+    local int64 table_offset = FTell() + (symbol_count * 0xC);
+    struct
+    {
+        SYMB_INFO symbol_info(table_offset)[symbol_count] <optimize = false>;
+    } symbol_info;
+};
+
+struct BLOCK
+{
+    BLOCK_HEADER block_header;
+
+    union
+    {
+        BLOCK_DATA block_data(block_header);
+
+        switch (block_header.magic)
+        {
+        case "TSFL":
+        case "LFST":
+        case "TSFB":
+        case "BFST":
+            BFST_BLOCK bsft_data(block_header); break;
+        case "FBRT":
+        case "TRBF":
+            TRBF_BLOCK trbf_data(block_header); break;
+        case "XRDH":
+        case "HDRX":
+            HDRX_BLOCK hdrx_data(block_header); break;
+        case "TCES":
+        case "SECT":
+            SECT_BLOCK sect_data(block_header); break;
+        case "CLER":
+        case "RELC":
+            RELC_BLOCK relc_data(block_header); break;
+        case "BMYS":
+        case "SYMB":
+            SYMB_BLOCK symb_data(block_header); break;
+        }
+    } block_data;
+};
+
+if (ReadUByte(0x03) == 'L')
+    LittleEndian();
+else
+    BigEndian();
+
+BLOCK block_data;

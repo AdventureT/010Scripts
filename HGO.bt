@@ -1,0 +1,54 @@
+//------------------------------------------------
+//--- 010 Editor v11.0.1 Binary Template
+//
+//      File: 
+//   Authors: 
+//   Version: 
+//   Purpose: 
+//  Category: 
+// File Mask: 
+//  ID Bytes: 
+//   History: 
+//------------------------------------------------
+struct Section {
+    char signature[4];
+    byte unknown[4];
+    char signature2[4];
+    uint size;
+    uint unknown2;
+};
+
+struct TXM0 {
+    char signature[4];
+    uint size;
+};
+
+struct MS00 {
+    char signature[4];
+    uint size;
+}
+local char sig[] = ReadString(FTell(), 4);
+switch(sig)
+{
+    case "TXMO" : 
+        TXM0 txm0;
+        FSeek(txm0.size + FTell()-8);
+        break;
+}
+
+while (!FEof())
+{
+    
+    
+    if (sig == "MS00")
+    {
+        MS00 ms00;
+        FSeek(ms00.size + FTell()-8);
+    }  
+    else
+    {
+        Section section;
+        FSeek(section.size + FTell()-12);
+    }
+    
+}
