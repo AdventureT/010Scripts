@@ -15,11 +15,10 @@ if (ReadString(FTell(), 4) != "TRB\0" && ReadUInt() != 2001)
     BigEndian();
     BitfieldLeftToRight();
 }
-FSeek(0);
 struct Header
 {
     char magic[4];
-    uint version; //?
+    uint version;
     ushort flag1;
     ushort flag2;
     uint dataInfoCount;
@@ -37,13 +36,14 @@ struct DataInfo
 	uint unknown1;
 	uint textOffset;
 	uint unknown3;
-	uint unknown4;
-	uint dataSize;
-	uint dataSize2;
+	ushort unknown4;
+    ushort isCompressed <comment="0 uncompressed | 1 compressed">;
+	uint uncompressedSize;
+	uint compressedSize;
 	uint dataOffset;
 	uint unknown5;
 	uint countOfRelocations;
-	uint zero2;
+	uint relocationOffset;
 	uint reversedTagsCount;
 	uint reversedTagsOffset;
 } dataInfos[header.dataInfoCount];
@@ -58,8 +58,8 @@ struct TagInfo
 
 struct ReversedTagInfo
 {
-    uint textOffset;
     uint dataOffset;
+    uint textOffset;
     int hash;
     char magic[4];
 } reversedTagInfos[dataInfos[1].reversedTagsCount];
@@ -67,15 +67,15 @@ struct ReversedTagInfo
 local int i;
 
 FSeek(dataInfos[0].dataOffset);
-byte textData[dataInfos[0].dataSize];
+byte textData[dataInfos[0].uncompressedSize];
 
 FSeek(dataInfos[1].dataOffset);
-byte rawData[dataInfos[1].dataSize];
+byte rawData[dataInfos[1].uncompressedSize];
 
 if (header.dataInfoCount > 2)
 {
     FSeek(dataInfos[2].dataOffset);
-    byte extraData[dataInfos[2].dataSize];
+    byte extraData[dataInfos[2].uncompressedSize];
 }
 
 FSeek(header.relocationDataOffset);
