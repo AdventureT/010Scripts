@@ -1,0 +1,26 @@
+//------------------------------------------------
+//--- 010 Editor v11.0.1 Binary Template
+//
+//      File: 
+//   Authors: 
+//   Version: 
+//   Purpose: 
+//  Category: 
+// File Mask: 
+//  ID Bytes: 
+//   History: 
+//------------------------------------------------
+
+uint _magicnumber;
+uint _version;
+uint _tocSize;
+uint _numFiles;
+uint _sectorSize;
+uint _hashSearchDivider;
+uint _hashSearchSlop;
+uint _numLargeFileBlocks;
+uint _numMediumFileBlocks;
+uint _numSmallFileBlocks;
+uquad _nameTableOffset;
+uint _nameTableSize;
+uint _flags;
