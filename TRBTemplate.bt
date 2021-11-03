@@ -2,8 +2,8 @@
 //--- 010 Editor v11.0 Binary Template
 //
 //      File: 
-//   Authors: revel8n#9505 Discord
-//   Version: 
+//   Authors: revel8n#9505 (Discord), Edited by AdventureT
+//   Version: 1.1
 //   Purpose: 
 //  Category: 
 // File Mask: 
@@ -204,6 +204,14 @@ struct TRBF_BLOCK(BLOCK_HEADER& block_header)
 
                 switch (symbol_name)
                 {
+                case "FileHeader":
+                {
+                    struct FILEHEADER
+                    {
+                        char tmdl[4];
+                    } fileheader;
+                    break;
+                }
                 case "ttex":
                 {
                     struct TTEX_HEADER
@@ -259,9 +267,14 @@ struct TRBF_BLOCK(BLOCK_HEADER& block_header)
                         }
                     } symbol_data;
                 } break;
+                case "Collision":
+                {
+                    uint32 count;
+                    struct RELC_OFFSET offset;
+                }
                 case "twld":
                 {
-                    struct TWLD_HEADER
+                    /*struct TWLD_HEADER
                     {
                         struct RELC_OFFSET name_offset            <format = hex>;
                         struct RELC_OFFSET mesh_info_offset       <format = hex>;
@@ -271,13 +284,13 @@ struct TRBF_BLOCK(BLOCK_HEADER& block_header)
                         
                         float  bounding_box[5];
                         
-                        {
+                        /*{
                             PushFP();
                             FSeek(startof(name_offset.target));
                             STRING name;
                             PopFP();
                         }
-                    } symbol_data;
+                    } symbol_data;*/
                 } break;
                 case "LightingData":
                     uint32 symbol_data <format = hex>; break;
@@ -285,11 +298,56 @@ struct TRBF_BLOCK(BLOCK_HEADER& block_header)
                 {
                     struct TERRAIN_HEADER
                     {
-                        struct RELC_OFFSET cell_info_offset  <format = hex>;
-                        uint32             cell_info_count   <format = hex>;
-                        struct RELC_OFFSET placement_offset  <format = hex>;
-                        uint32             placement_count   <format = hex>;
-                    } symbol_data;
+                        struct RELC_OFFSET regions_offset  <format = hex>;
+                        uint32             region_count    <format = hex>;
+                        struct RELC_OFFSET instance_offset  <format = hex>;
+                        uint32             instance_count   <format = hex>;
+                    } header;
+
+                    {
+                        PushFP();
+                        FSeek(startof(header.instance_offset.target));
+                        struct INSTANCE
+                        {
+                            struct RELC_OFFSET unk_offset  <format = hex>;
+                            uint32 flags <format = hex>;
+                            struct RELC_OFFSET name_offset  <format = hex>;
+                            struct RELC_OFFSET name2_offset  <format = hex>;
+                            /*{
+                                PushFP();
+                                FSeek(startof(name_offset.target));
+                                STRING name;
+                                PopFP();
+                            }*/
+                            struct RELC_OFFSET unk2_offset  <format = hex>;
+                            uint32 unknown  <format = hex>;
+                            uint32 unknown2  <format = hex>;
+                            uint32 unknown3  <format = hex>;
+                            struct RELC_OFFSET unk5_offset  <format = hex>;
+                            uint32 unknown4 <format = hex>;
+                            uint32 unknown5  <format = hex>;
+                            uint32 unknown6  <format = hex>;
+                            struct RELC_OFFSET unk5_offset  <format = hex>;
+                            uint32 unknown7  <format = hex>;
+                            uint32 unknown8  <format = hex>;
+                            uint32 worldVisIndex  <format = hex>;
+                        } instances[header.instance_count];
+                        PopFP();
+                    }
+                    
+                    {
+                        PushFP();
+                        FSeek(startof(header.regions_offset.target));
+                        struct REGION
+                        {
+                            struct RELC_OFFSET unk_offset  <format = hex>;
+                            struct RELC_OFFSET unk2_offset  <format = hex>;
+                            uint32 cell_count;
+                        } regions[header.region_count];
+                        PopFP();
+                    }
+                    
+                    
                 } break;
                 default:
                     uint32 symbol_data <format = hex>; break;
