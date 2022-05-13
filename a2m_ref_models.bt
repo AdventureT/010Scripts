@@ -1,0 +1,141 @@
+//------------------------------------------------
+//--- 010 Editor v12.0.1 Binary Template
+//
+//      File: Ref A2M model files
+//   Authors: AdventureT
+//   Version: 0.1
+//   Purpose: Figure out model files of A2M game engine 3.1.1082
+//  Category: 
+// File Mask: 
+//  ID Bytes: 
+//   History: 
+//------------------------------------------------
+
+const int HEADER_LENGTH = 0x40; // all offsets are -64
+
+ushort sectionCount;
+ushort modelCount;
+uint unk2;
+uint unk3;
+float floats[4];
+int sectionOffset;
+int matricesOffset; 
+int infoSectionOffset1; 
+int infoSectionOffset2;
+int subInfoSectionOffsetCount;  // seems incorrect
+int subInfoSectionOffset;
+int unk41;
+int subInfoSectionOffset2Count;
+int subInfoSectionOffset2;
+
+FSeek(sectionOffset - HEADER_LENGTH);
+struct section
+{
+    float mat[16];
+    short unk5;
+    short unk6;
+    ushort unkIndex;
+    ushort unk7;
+    ushort unk8;
+    ushort unk9;
+    int padding[5];
+} sections[sectionCount];
+
+FSeek(matricesOffset - HEADER_LENGTH);
+struct matrix
+{
+    float mat[16];
+} matrices[sectionCount];
+
+
+FSeek(infoSectionOffset2 - HEADER_LENGTH);
+uint offs1[modelCount];
+
+local int cnt;
+local int offset2;
+local int offset;
+local int count2;
+local int count;
+local int off;
+local int i;
+for( i = 0; i < modelCount; i++)
+{
+    FSeek(offs1[i] - HEADER_LENGTH);
+    cnt = ReadInt();
+    FSeek(FTell() + 4);
+    off = ReadInt();
+    FSeek(off - HEADER_LENGTH);
+    off = ReadInt();
+    FSeek(off - HEADER_LENGTH);
+    count = ReadInt();
+    FSeek(FTell() + 4);
+    count2 = ReadInt();
+    FSeek(FTell() + 4);
+    offset = ReadInt();
+    FSeek(FTell() + 4);
+    offset2 = ReadInt();
+    FSeek(offset2 - HEADER_LENGTH);
+    struct mesh
+    {
+        struct
+        {
+            int unk11;
+            int meshInfoCount;
+            int meshInfosOffset;
+            int unk14;
+            int unk15;
+            int unk16;
+            int unk17;
+            int meshFootersCount;
+            int meshFootersOffset;
+            int unk20;
+            int unk21;
+            int unk22;
+            int unk22;
+            int unk23;
+        } meshHeader;
+        
+        struct
+        {
+            int meshFooterOffset;
+            int vertexCount;
+            int indicesCount;
+            int idkCount;
+            int unk11;
+            int unk12;
+            int unk17;
+            int unk18;
+            int intCount;
+            int intsOffset;
+            int unk21;
+            int unk22;
+            int unk23;
+            int unk24;
+            int indicesOffset;
+            int verticesOffset;
+        } meshInfos[meshHeader.meshInfoCount];
+
+        struct
+        {
+            int unk11;
+            int unk12;
+            float unk13;
+            int unk14;
+            int unk15;
+            int vertexStride;
+            int unk17;
+            int unk18;
+            int unk19;
+            int unk20;
+            int unk21;
+            int unk22;
+            int unk19;
+            int unk20;
+            int unk21;
+            int unk22;
+            int unk23;
+            int unk24;
+        } meshFooters[meshHeader.meshFootersCount];
+    } meshes;
+    
+}
