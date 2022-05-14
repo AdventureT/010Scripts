@@ -13,22 +13,25 @@
 
 const int HEADER_LENGTH = 0x40; // all offsets are -64
 
-ushort sectionCount;
-ushort modelCount;
-uint unk2;
-uint unk3;
-float floats[4];
-int sectionOffset;
-int matricesOffset; 
-int infoSectionOffset1; 
-int infoSectionOffset2;
-int subInfoSectionOffsetCount;  // seems incorrect
-int subInfoSectionOffset;
-int unk41;
-int subInfoSectionOffset2Count;
-int subInfoSectionOffset2;
+struct Header
+{
+    ushort sectionCount;
+    ushort modelCount;
+    uint unk2;
+    uint unk3;
+    float floats[4];
+    int sectionOffset;
+    int matricesOffset; 
+    int infoSectionOffset1; 
+    int infoSectionOffset2;
+    int subInfoSectionOffsetCount;  // seems incorrect
+    int subInfoSectionOffset;
+    int unk41;
+    int subInfoSectionOffset2Count;
+    int subInfoSectionOffset2;
+} header;
 
-FSeek(sectionOffset - HEADER_LENGTH);
+FSeek(header.sectionOffset - HEADER_LENGTH);
 struct section
 {
     float mat[16];
@@ -39,17 +42,17 @@ struct section
     ushort unk8;
     ushort unk9;
     int padding[5];
-} sections[sectionCount];
+} sections[header.sectionCount];
 
-FSeek(matricesOffset - HEADER_LENGTH);
+FSeek(header.matricesOffset - HEADER_LENGTH);
 struct matrix
 {
     float mat[16];
-} matrices[sectionCount];
+} matrices[header.sectionCount];
 
 
-FSeek(infoSectionOffset2 - HEADER_LENGTH);
-uint offs1[modelCount];
+FSeek(header.infoSectionOffset2 - HEADER_LENGTH);
+uint offs1[header.modelCount];
 
 local int cnt;
 local int offset2;
@@ -58,7 +61,7 @@ local int count2;
 local int count;
 local int off;
 local int i;
-for( i = 0; i < modelCount; i++)
+for( i = 0; i < header.modelCount; i++)
 {
     FSeek(offs1[i] - HEADER_LENGTH);
     cnt = ReadInt();
